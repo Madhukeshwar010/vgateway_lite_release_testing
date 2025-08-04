@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<head>
+  <meta charset="UTF-8" />
+  <title>MQTT Setup & Client</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0; padding: 0; overflow: auto;
+    }
+    body {
+      background-image: url('base.png');
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center center;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f9f9f9;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      background: #f2f2f2;
+      padding: 30px 40px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    label, input, button {
+      display: block;
+      margin: 10px auto;
+      font-size: 16px;
+      max-width: 100%;
+    }
+
+    button {
+      padding: 8px 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    #certificates {
+      display: none;
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      text-align: left;
+      margin-top: 20px;
+      background: white;
+      border-radius: 5px;
+    }
+
+    li {
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- Broker Setup Section -->
+    <div id="setupSection" class="section active">
+      <h2>MQTT Connection Setup</h2>
+
+      <label>Broker IP:</label>
+      <input type="text" id="broker" placeholder="e.g., 176.9.144.238" />
+
+      <label>Port:</label>
+      <input type="number" id="port" placeholder="e.g., 8083 or 8883" />
+
+      <label><input type="checkbox" id="ssl" /> Use SSL</label>
+
+      <div id="certificates">
+        <label>CA Certificate (PEM):</label>
+        <input type="file" id="ca" accept=".crt,.pem" />
+
+        <label>Client Certificate (PEM):</label>
+        <input type="file" id="cert" accept=".crt,.pem" />
+
+        <label>Client Key (PEM):</label>
+        <input type="file" id="key" accept=".key,.pem" />
+      </div>
+
+      <button id="nextBtn">Next</button>
+    </div>
+
+    <!-- Client Section -->
+    <div id="clientSection" class="section">
+      <h2>MQTT Client</h2>
+
+      <label>Topic:</label>
+      <input type="text" id="topic" placeholder="Enter topic to subscribe/publish" />
+
+      <label>Message:</label>
+      <input type="text" id="message" placeholder="Enter message to publish" />
+
+      <button id="connectBtn">Connect & Subscribe</button>
+      <button id="sendBtn" disabled>Send Message</button>
+
+      <ul id="messages"></ul>
+    </div>
+
+  </div>
+
+<script>
+  const sslCheckbox = document.getElementById('ssl');
+  const certDiv = document.getElementById('certificates');
+  sslCheckbox.addEventListener('change', () => {
+    certDiv.style.display = sslCheckbox.checked ? 'block' : 'none';
+  });
+
+  const setupSection = document.getElementById('setupSection');
+  const clientSection = document.getElementById('clientSection');
+
+  let ws = null;
+  let brokerConfig = null;
+
+  function readFileAsync(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) resolve(null);
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  }
+
+  document.getElementById('nextBtn').addEventListener('click', () => {
+    const broker = document.getElementById('broker').value.trim();
+    const port = document.getElementById('port').value.trim();
+    const useSSL = sslCheckbox.checked;
+
+    if (!broker || !port) {
+      alert('Please enter both Broker IP and Port.');
+      return;
+    }
+
+    brokerConfig = { broker, port, useSSL };
+
+    // Show client UI, hide setup
+    setupSection.classList.remove('active');
+    clientSection.classList.add('active');
+  });
+
+  document.getElementById('connectBtn').addEventListener('click', async () => {
+    if (!brokerConfig) {
+      alert('Please setup the broker first.');
+      return;
+    }
+
+    const topic = document.getElementById('topic').value.trim();
+    if (!topic) {
+      alert('Please enter a topic.');
+      return;
+    }
+
+    // SSL certs if needed
+    let ca = null, cert = null, key = null;
+    if (brokerConfig.useSSL) {
+      ca = await readFileAsync(document.getElementById('ca').files[0]);
+      cert = await readFileAsync(document.getElementById('cert').files[0]);
+      key = await readFileAsync(document.getElementById('key').files[0]);
+    }
+
+    // Open WebSocket to local bridge
+    ws = new WebSocket('ws://localhost:8080');
+
+    ws.onopen = () => {
+      // Send config
+      ws.send(JSON.stringify({
+        type: 'config',
+        broker: brokerConfig.broker,
+        port: brokerConfig.port,
+        useSSL: brokerConfig.useSSL,
+        ca,
+        cert,
+        key
+      }));
+
+      // Then subscribe
+      ws.send(JSON.stringify({
+        type: 'subscribe',
+        topic
+      }));
+
+      document.getElementById('sendBtn').disabled = false;
+      logMsg('✅ WebSocket connected, broker config sent');
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'mqtt_message') {
+        logMsg(`📩 ${data.topic}: ${data.message}`);
+      } else if (data.type === 'status') {
+        logMsg(data.message);
+      }
+    };
+
+    ws.onerror = (err) => {
+      logMsg('❌ WebSocket error');
+    };
+
+    ws.onclose = () => {
+      logMsg('❌ WebSocket disconnected');
+      document.getElementById('sendBtn').disabled = true;
+    };
+  });
+
+  document.getElementById('sendBtn').addEventListener('click', () => {
+    const topic = document.getElementById('topic').value.trim();
+    const message = document.getElementById('message').value.trim();
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      alert('Not connected');
+      return;
+    }
+    if (topic && message) {
+      ws.send(JSON.stringify({
+        type: 'publish',
+        topic,
+        message
+      }));
+      logMsg(`📤 Sent to ${topic}: ${message}`);
+      document.getElementById('message').value = '';
+    }
+  });
+
+  function logMsg(msg) {
+    const ul = document.getElementById('messages');
+    const li = document.createElement('li');
+    li.textContent = msg;
+    ul.appendChild(li);
+    ul.scrollTop = ul.scrollHeight;
+  }
+</script>
+
+</body>
+</html>
