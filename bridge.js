@@ -28,8 +28,8 @@ wss.on('connection', (ws) => {
 
       const options = {
         reconnectPeriod: 1000,
-        protocolVersion: 4, // MQTT 3.1.1
-        rejectUnauthorized: false // allow self-signed certs if needed
+        protocolVersion: 4,
+        rejectUnauthorized: false
       };
 
       if (useSSL) {
@@ -45,6 +45,8 @@ wss.on('connection', (ws) => {
 
       mqttClient.on('connect', () => {
         ws.send(JSON.stringify({ type: 'status', message: '✅ MQTT connected' }));
+
+        // Automatically subscribe to GatewayReply topic
       });
 
       mqttClient.on('error', (err) => {
@@ -52,11 +54,23 @@ wss.on('connection', (ws) => {
       });
 
       mqttClient.on('message', (topic, msg) => {
-        ws.send(JSON.stringify({
-          type: 'mqtt_message',
-          topic,
-          message: msg.toString()
-        }));
+        const message = msg.toString();
+
+        // Log nicely if it's a reply topic
+        if (topic.includes('GatewayReply')) {
+          console.log(`📥 🔁 Reply Received on: ${topic}`);
+          console.log(`🧾 Message:\n${message}`);
+        } else {
+          console.log(`📥 MQTT Message | Topic: ${topic} | Message: ${message}`);
+        }
+
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'message',
+            topic: topic,
+            message: message
+          }));
+        }
       });
 
       mqttClient.on('close', () => {
@@ -65,11 +79,14 @@ wss.on('connection', (ws) => {
 
     } else if (data.type === 'subscribe') {
       if (mqttClient && data.topic) {
-        mqttClient.subscribe(data.topic, (err) => {
+        // Allow both single topic (string) and multiple topics (array)
+        let topics = Array.isArray(data.topic) ? data.topic : [data.topic];
+
+        mqttClient.subscribe(topics, (err) => {
           if (err) {
             ws.send(JSON.stringify({ type: 'status', message: '❌ Subscribe error: ' + err.message }));
           } else {
-            ws.send(JSON.stringify({ type: 'status', message: `🔔 Subscribed to ${data.topic}` }));
+            ws.send(JSON.stringify({ type: 'status', message: `🔔 Subscribed to ${topics.join(', ')}` }));
           }
         });
       }
