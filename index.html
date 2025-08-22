@@ -5,67 +5,36 @@
   <title>MQTT Setup & Client</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
-    html, body {
-      height: 100%;
-      margin: 0; padding: 0; overflow: auto;
-    }
+    html, body { height: 100%; margin: 0; padding: 0; overflow: auto; }
     body {
-      background: #f9f9f9;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      background: #f9f9f9; display: flex; justify-content: center; align-items: center;
       font-family: Arial, sans-serif;
     }
     .container {
-      background: #f2f2f2;
-      padding: 30px 40px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
-      text-align: center;
-      width: 500px;
+      background: #f2f2f2; padding: 30px 40px; border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3); text-align: center; width: 500px;
     }
-    label, input, button {
-      display: block;
-      margin: 10px auto;
-      font-size: 16px;
-    }
-    button {
-      padding: 8px 16px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    #certificates {
-      display: none;
-      text-align: left;
-    }
+    label, input, button { display: block; margin: 10px auto; font-size: 16px; }
+    button {display: block;margin: 10px auto;font-size: 16px;padding: 8px 16px;font-weight: bold;cursor: pointer;width: 180px; }
+    #certificates { display: none; text-align: left; }
     ul {
-      list-style: none;
-      padding: 0;
-      max-height: 200px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      text-align: left;
-      margin-top: 20px;
-      background: white;
-      border-radius: 5px;
+      list-style: none; padding: 0; max-height: 200px; overflow-y: auto;
+      border: 1px solid #ccc; text-align: left; margin-top: 20px; background: white; border-radius: 5px;
     }
-    li {
-      padding: 5px;
-      border-bottom: 1px solid #eee;
-      font-family: monospace;
-      font-size: 14px;
-    }
-    pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .section {
-      display: none;
-    }
-    .section.active {
-      display: block;
-    }
+    li { padding: 5px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 14px; }
+    pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .writeForm { display:none; margin-top: 15px; }
+    .writeForm input { width: 100%; padding: 8px; box-sizing: border-box; }
+    .req-btn {
+    width: 150px;      /* same width */
+    height: 40px;      /* same height */
+    font-size: 14px;   /* uniform font */
+    margin: 5px;       /* spacing between buttons */
+    border-radius: 6px;
+    cursor: pointer;
+  }
   </style>
 </head>
 <body>
@@ -73,18 +42,15 @@
 <div class="container">
   <!-- Setup Section -->
   <div id="setupSection" class="section active">
-    <h2>MQTT Connection Setup</h2>
+    <h2>vGateway Lite MQTT Release Testing</h2>
+    <h3>MQTT Connection Setup</h3>
     <label>Gateway MAC ID:</label>
     <input type="text" id="mac" />
-
     <label>Broker IP:</label>
     <input type="text" id="broker" placeholder="e.g., 176.9.144.238" />
-
     <label>Port:</label>
     <input type="number" id="port" placeholder="e.g., 8083 or 8883" />
-
     <label><input type="checkbox" id="ssl" /> Use SSL</label>
-
     <div id="certificates">
       <label>CA Certificate (PEM):</label>
       <input type="file" id="ca" accept=".crt,.pem" />
@@ -93,41 +59,98 @@
       <label>Client Key (PEM):</label>
       <input type="file" id="key" accept=".key,.pem" />
     </div>
-
     <button id="goToMQTT">MQTT Request</button>
     <button id="goToLTE">LTE Request</button>
     <button id="goToWiFi">Wi-Fi Request</button>
     <button id="goToCB">CB Request</button>
+    <button id="goToDev_Restart">Restart Request</button>
+    <button id="goToDFU">DFU Request</button>
+    <button id="goToOTA">OTA Request</button>
   </div>
 
-  <!-- Sections -->
+  <!-- MQTT Section -->
   <div id="mqttSection" class="section">
     <h2>Available MQTT Request</h2>
     <button id="MQTTRead">MQTT Read Request</button>
     <ul id="mqttMessages"></ul>
+    <button id="MQTTWrite">MQTT Update Request</button>
+    <div id="MQTTWriteForm" class="writeForm">
+      <input type="text" id="MQTTUrlInput" placeholder="Enter direct downloadable URL" />
+      <button id="MQTTSubmitUrl">Submit</button>
+    </div>
     <button onclick="backToSetup()">⬅ Back</button>
   </div>
 
+  <!-- LTE Section -->
   <div id="lteSection" class="section">
     <h2>Available LTE Request</h2>
     <button id="LTERead">LTE Read Request</button>
     <ul id="lteMessages"></ul>
+    <button id="LTEWrite">LTE Update Request</button>
+    <div id="LTEWriteForm" class="writeForm">
+      <input type="text" id="LTEUrlInput" placeholder="Enter direct downloadable URL" />
+      <button id="LTESubmitUrl">Submit</button>
+    </div>
     <button onclick="backToSetup()">⬅ Back</button>
   </div>
 
+  <!-- Wi-Fi Section -->
   <div id="wifiSection" class="section">
     <h2>Available Wi-Fi Request</h2>
     <button id="WIFIRead">Wi-Fi Read Request</button>
     <ul id="wifiMessages"></ul>
+    <button id="WIFIWrite">Wi-Fi Update Request</button>
+    <div id="WIFIWriteForm" class="writeForm">
+      <input type="text" id="WIFIUrlInput" placeholder="Enter direct downloadable URL" />
+      <button id="WIFISubmitUrl">Submit</button>
+    </div>
     <button onclick="backToSetup()">⬅ Back</button>
   </div>
 
+  <!-- CB Section -->
   <div id="cbSection" class="section">
     <h2>Available CB Request</h2>
     <button id="CBRead">vSens Settings Read Request</button>
     <ul id="CBMessages"></ul>
+    <button id="CBWrite">vSens Update Request</button>
+    <div id="CBWriteForm" class="writeForm">
+      <input type="text" id="CBUrlInput" placeholder="Enter direct downloadable URL" />
+      <button id="CBSubmitUrl">Submit</button>
+    </div>
     <button onclick="backToSetup()">⬅ Back</button>
   </div>
+
+  <div id="Dev_Restart_Section" class="section">
+    <h2>Available Request</h2>
+    <button id="Dev_Restart">Device Restart Request</button>
+    <ul id="DFUWriteForm"></ul>
+    <ul id="Dev_Rst_Messages"></ul>
+    <button onclick="backToSetup()">⬅ Back</button>
+  </div>
+
+  <div id="DFU_Section" class="section">
+    <h2>Available Request</h2>
+    <button id="DFUWrite">DFU Update Request</button>
+    <div id="DFUForm" class="writeForm">
+      <input type="text" id="CBUrlInput_1" placeholder="Enter direct downloadable dat file URL" />
+      <input type="text" id="CBUrlInput_2" placeholder="Enter direct downloadable bin file URL" />
+      <input type="text" id="Sensor_MAC" placeholder="Enter Sensor MAC ID" />
+      <button id="SubmitUrl_1">Submit</button>
+    </div>
+    <button onclick="backToSetup()">⬅ Back</button>
+  </div>
+
+  <div id="OTA_Section" class="section">
+    <h2>Available Request</h2>
+    <button id="OTAWrite">DFU Update Request</button>
+    <div id="OTAForm" class="writeForm">
+      <input type="text" id="OTAUrlInput" placeholder="Enter direct downloadable bin File URL" />
+      <button id="SubmitUrl">Submit</button>
+      <ul id="OTA_Messages"></ul>
+    </div>
+    <button onclick="backToSetup()">⬅ Back</button>
+  </div>
+
 </div>
 
 <script>
@@ -143,11 +166,15 @@ window.onload = function() {
     mqtt: document.getElementById('mqttSection'),
     lte: document.getElementById('lteSection'),
     wifi: document.getElementById('wifiSection'),
-    cb: document.getElementById('cbSection')
+    cb: document.getElementById('cbSection'),
+    restart: document.getElementById('Dev_Restart_Section'),
+    dfu: document.getElementById('DFU_Section'),
+    ota: document.getElementById('OTA_Section')
   };
 
   let brokerConfig = null;
   let ws = null;
+  let isConnected = false;
 
   function readFileAsync(file) {
     return new Promise((resolve, reject) => {
@@ -179,12 +206,13 @@ window.onload = function() {
 
   window.backToSetup = function() {
     switchSection('setup');
-    ['mqttMessages','lteMessages','wifiMessages','CBMessages'].forEach(id => {
+    ['mqttMessages','lteMessages','wifiMessages','CBMessages','Dev_Rst_Messages'].forEach(id => {
       document.getElementById(id).innerHTML = '';
     });
   };
 
   async function connectAndSubscribe() {
+    if (isConnected) return;
     let ca = null, cert = null, key = null;
     if (brokerConfig.useSSL) {
       ca = await readFileAsync(document.getElementById('ca').files[0]);
@@ -203,38 +231,33 @@ window.onload = function() {
       }));
       ws.send(JSON.stringify({
         type: 'subscribe',
-        topic: [`GatewayReply/${brokerConfig.mac}/#`]
+        topic: `GatewayReply/${brokerConfig.mac}/#`
       }));
       logMsg(`✅ Connected to broker`, 'mqtt');
       logMsg(`🔔 Subscribed to GatewayReply/${brokerConfig.mac}/#`, 'mqtt');
+      isConnected = true;
     };
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       let displayMsg = data.message || JSON.stringify(data);
-
-      // Try to pretty-print if JSON
       try {
         const parsed = typeof displayMsg === 'string' ? JSON.parse(displayMsg) : displayMsg;
         displayMsg = JSON.stringify(parsed, null, 2);
-      } catch (e) {
-        // Not JSON, leave as is
-      }
-
-      // Show in all sections with formatted output
-      ['mqtt', 'lte', 'wifi', 'cb'].forEach(type => {
+      } catch (e) {}
+      ['mqtt', 'lte', 'wifi', 'cb', 'restart', 'dfu','ota'].forEach(type => {
         logMsg(`📩 ${data.topic || ''}:\n${displayMsg}`, type, true);
       });
     };
   }
 
-  function publishMessage(topic, type) {
+  function publishMessage(topic, type, message = '{}') {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       alert('WebSocket not connected');
       return;
     }
-    ws.send(JSON.stringify({ type: 'publish', topic, message: '{}' }));
-    logMsg(`📤 Sent to ${topic}: {}`, type);
+    ws.send(JSON.stringify({ type: 'publish', topic, message }));
+    logMsg(`📤 Sent to ${topic}: ${message}`, type);
   }
 
   function logMsg(msg, type, isFormatted = false) {
@@ -242,37 +265,43 @@ window.onload = function() {
       mqtt: 'mqttMessages',
       lte: 'lteMessages',
       wifi: 'wifiMessages',
-      cb: 'CBMessages'
+      cb: 'CBMessages',
+      restart : 'Dev_Rst_Messages',
+      ota: 'OTA_Messages'
     };
     const ul = document.getElementById(map[type]);
     if (!ul) return;
     const li = document.createElement('li');
-    if (isFormatted) {
-      li.innerHTML = `<pre>${msg}</pre>`;
-    } else {
-      li.textContent = msg;
-    }
+    li.innerHTML = isFormatted ? `<pre>${msg}</pre>` : msg;
     ul.appendChild(li);
     ul.scrollTop = ul.scrollHeight;
   }
 
   // Navigation buttons
-  document.getElementById('goToMQTT').addEventListener('click', () => {
-    if (collectConfig()) { connectAndSubscribe(); switchSection('mqtt'); }
+  document.getElementById('goToMQTT').addEventListener('click', async () => {
+    if (collectConfig()) { await connectAndSubscribe(); switchSection('mqtt'); }
   });
-  document.getElementById('goToLTE').addEventListener('click', () => {
-    if (collectConfig()) { connectAndSubscribe(); switchSection('lte'); }
+  document.getElementById('goToLTE').addEventListener('click', async () => {
+    if (collectConfig()) { await connectAndSubscribe(); switchSection('lte'); }
   });
-  document.getElementById('goToWiFi').addEventListener('click', () => {
-    if (collectConfig()) { connectAndSubscribe(); switchSection('wifi'); }
+  document.getElementById('goToWiFi').addEventListener('click', async () => {
+    if (collectConfig()) { await connectAndSubscribe(); switchSection('wifi'); }
   });
-  document.getElementById('goToCB').addEventListener('click', () => {
-    if (collectConfig()) { connectAndSubscribe(); switchSection('cb'); }
+  document.getElementById('goToCB').addEventListener('click', async () => {
+    if (collectConfig()) { await connectAndSubscribe(); switchSection('cb'); }
   });
-
-  // Request buttons
+  document.getElementById('goToDev_Restart').addEventListener('click', async () => {
+    if (collectConfig()) { await connectAndSubscribe(); switchSection('restart'); }
+  });
+  document.getElementById('goToDFU').addEventListener('click', async () => {
+    if (collectConfig()) { await connectAndSubscribe(); switchSection('dfu'); }
+  });
+  document.getElementById('goToOTA').addEventListener('click', async () => {
+    if (collectConfig()) { await connectAndSubscribe(); switchSection('ota'); }
+  });
+  // Read buttons
   document.getElementById('MQTTRead').addEventListener('click', () => {
-    publishMessage(`ServerRequest/${brokerConfig.mac}/VegamMQTT/ReadJsonFile`, 'mqtt');
+    publishMessage(`ServerRequest/${brokerConfig.mac}/VegamMQTT/ReadJsonFile/`, 'mqtt');
   });
   document.getElementById('LTERead').addEventListener('click', () => {
     publishMessage(`ServerRequest/${brokerConfig.mac}/LTE/ReadJsonFile`, 'lte');
@@ -283,6 +312,112 @@ window.onload = function() {
   document.getElementById('CBRead').addEventListener('click', () => {
     publishMessage(`ServerRequest/${brokerConfig.mac}/CB_MODE/ReadJsonFile`, 'cb');
   });
+  document.getElementById('Dev_Restart').addEventListener('click', () => {
+    publishMessage(`ServerRequest/${brokerConfig.mac}/VegamMQTT/DeviceRestart/`, 'restart');
+  });
+  // ✅ Common write handler
+  function setupWriteHandler(writeBtnId, formId, inputId, submitBtnId, type, serviceName, fileName) {
+    const writeBtn = document.getElementById(writeBtnId);
+    const writeForm = document.getElementById(formId);
+    const urlInput = document.getElementById(inputId);
+    const submitBtn = document.getElementById(submitBtnId);
+
+    writeBtn.addEventListener('click', () => {
+      writeForm.style.display = (writeForm.style.display === 'block') ? 'none' : 'block';
+      urlInput.focus();
+    });
+
+    submitBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url = urlInput.value.trim();
+      if (!url) {
+        alert('Please enter a valid URL');
+        return;
+      }
+      const topic = `ServerRequest/${brokerConfig.mac}/OTA/JsonFileUpdate`;
+      const payload = JSON.stringify({ url, service_name: serviceName, file_name: fileName });
+      publishMessage(topic, type, payload);
+      urlInput.value = '';
+      writeForm.style.display = 'none';
+    });
+  }
+
+
+    function DFUWriteHandler(writeBtnId, formId, inputId_1, inputId_2, sensor_mac, submitBtnId) {
+    const writeBtn = document.getElementById(writeBtnId);
+    const writeForm = document.getElementById(formId);
+    const urlInput_1 = document.getElementById(inputId_1);
+    const urlInput_2 = document.getElementById(inputId_2);
+    const urlInput_3 = document.getElementById(sensor_mac);
+    const submitBtn = document.getElementById(submitBtnId);
+    
+    writeBtn.addEventListener('click', () => {
+      writeForm.style.display = (writeForm.style.display === 'block') ? 'none' : 'block';
+      urlInput_1.focus();
+      urlInput_2.focus();
+    });
+
+    submitBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url_1 = urlInput_1.value.trim();
+      const url_2 = urlInput_2.value.trim();
+      const mac_value = urlInput_3.value.trim();
+
+      if (!url_1 || !url_2) {
+        alert('Please enter a valid URL');
+        return;
+      }
+
+      if (!mac_value) {
+        alert('Please enter a valid Sensor MAC ID');
+        return;
+      }
+
+      const topic = `ServerRequest/${brokerConfig.mac}/OTA/InitializeUpdate`;
+      const payload = JSON.stringify({ dat_url:url_1, bin_url: url_2, mac_id:mac_value});
+
+      publishMessage(topic,"dfu",payload);
+      urlInput_1.value = '';
+      urlInput_2.value = '';
+      urlInput_3.value = '';
+      writeForm.style.display = 'none';
+    });
+  }
+
+  function OTAWriteHandler(writeBtnId, formId, inputId, submitBtnId) {
+    const writeBtn = document.getElementById(writeBtnId);
+    const writeForm = document.getElementById(formId);
+    const urlInput = document.getElementById(inputId);
+    const submitBtn = document.getElementById(submitBtnId);
+
+    writeBtn.addEventListener('click', () => {
+      writeForm.style.display = (writeForm.style.display === 'block') ? 'none' : 'block';
+      urlInput.focus();
+    });
+
+    submitBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url = urlInput.value.trim();
+      if (!url) {
+        alert('Please enter a valid URL');
+        return;
+      }
+      const topic = `ServerRequest/${brokerConfig.mac}/OTA/StartOTA`;
+      const payload = url;
+      publishMessage(topic,"ota", payload);
+      urlInput.value = '';
+      writeForm.style.display = 'none';
+    });
+  }
+
+
+  // Attach handlers for all write buttons
+  setupWriteHandler('MQTTWrite', 'MQTTWriteForm', 'MQTTUrlInput', 'MQTTSubmitUrl', 'mqtt', 'VegamMQTT', 'Vegam_MQTT.json');
+  setupWriteHandler('LTEWrite', 'LTEWriteForm', 'LTEUrlInput', 'LTESubmitUrl', 'lte', 'LTE', 'LTE_settings.json');
+  setupWriteHandler('WIFIWrite', 'WIFIWriteForm', 'WIFIUrlInput', 'WIFISubmitUrl', 'wifi', 'WiFi', 'wifi_settings.json');
+  setupWriteHandler('CBWrite', 'CBWriteForm', 'CBUrlInput', 'CBSubmitUrl', 'cb', 'CB_MODE', 'vSens_Settings.json');
+  DFUWriteHandler('DFUWrite', 'DFUForm', 'CBUrlInput_1', 'CBUrlInput_2', 'Sensor_MAC', 'SubmitUrl_1');
+  OTAWriteHandler('OTAWrite', 'OTAForm', 'OTAUrlInput', 'SubmitUrl');
 };
 </script>
 </body>
